@@ -22,26 +22,27 @@
 # The model that represents the User
 class User < ApplicationRecord
   has_secure_password validations: false
+  has_many :books
   has_many :tokens
   has_many :user_roles
   has_many :roles, through: :user_roles
 
   validates :email, uniqueness: true
 
-  scope :invite_not_expired, -> { where('invitation_expiration > ?', DateTime.now) }
+  scope :invite_not_expired, -> { where("invitation_expiration > ?", DateTime.now) }
   scope :invite_token_is, ->(invitation_token) { where(invitation_token: invitation_token) }
 
   # Callbacks
-  before_create :generate_invitation_token
-  before_save :generate_invitation_token, if: :will_save_change_to_invitation_token?
-  after_commit :invite_user, if: :saved_change_to_invitation_token?
+  # before_create :generate_invitation_token
+  # before_save :generate_invitation_token, if: :will_save_change_to_invitation_token?
+  # after_commit :invite_user, if: :saved_change_to_invitation_token?
 
   def generate_token!(ip)
     token = Token.create(
       value: BaseApi::AccessToken.generate(self),
       user_id: id,
       expiry: DateTime.current + 7.days,
-      ip: ip
+      ip: ip,
     )
   end
 
@@ -59,7 +60,7 @@ class User < ApplicationRecord
   end
 
   def invitation_link
-    throw 'Environment Variable Not Found Error' if Rails.application.credentials.invitation[:url].nil?
+    throw "Environment Variable Not Found Error" if Rails.application.credentials.invitation[:url].nil?
 
     url = Rails.application.credentials.invitation[:url]
     "#{url}#{invitation_token}"
